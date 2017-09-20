@@ -4,3 +4,4 @@ src/*.js.map
 /compiled
 *.metadata.json
 *.map.js
+*.DS_Store

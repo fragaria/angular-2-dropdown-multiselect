@@ -48,6 +48,8 @@ export interface IMultiSelectSettings {
   autoUnselect?: boolean;
   showCheckAll?: boolean;
   showUncheckAll?: boolean;
+  disableRemove?: boolean;
+  disableAdd?: boolean;
   dynamicTitleMaxItems?: number;
   maxHeight?: string;
   displayAllSelectedText?: boolean;
@@ -127,7 +129,7 @@ export class MultiSelectSearchFilter implements PipeTransform {
                    [checked]="isSelected(option)" (click)="preventCheckboxCheck($event, option)"/>
 
             <label class="custom-control custom-checkbox" *ngIf="settings.checkedStyle === 'custom'" >
-              <input class="custom-control-input" type="checkbox" [checked]="isSelected(option)" (click)="!option.isLabel && setSelected($event, option)">
+              <input class="custom-control-input" [disabled]="(settings.disableRemove && isOriginalOption(option)) || (settings.disableAdd  && !isOriginalOption(option))" type="checkbox" [checked]="isSelected(option)" (click)="!option.isLabel && setSelected($event, option)">
               <span class="custom-control-indicator"></span>
             </label>
 
@@ -150,6 +152,7 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
   @Input() settings: IMultiSelectSettings;
   @Input() texts: IMultiSelectTexts;
   @Input() disabled: boolean = false;
+  @Input() formControl: any;
   @Output() selectionLimitReached = new EventEmitter();
   @Output() dropdownClosed = new EventEmitter();
   @Output() onAdded = new EventEmitter();
@@ -177,6 +180,7 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
   numSelected: number = 0;
   isVisible: boolean = false;
   searchFilterText: string = '';
+  originalOptions: any[];
 
   defaultSettings: IMultiSelectSettings = {
     pullRight: false,
@@ -216,10 +220,13 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
     this.settings = Object.assign(this.defaultSettings, this.settings);
     this.texts = Object.assign(this.defaultTexts, this.texts);
     this.title = this.texts.defaultTitle || '';
+    this.originalOptions = (this.formControl && this.formControl.value) ? this.formControl.value.slice() : [];
   }
 
-  onModelChange: Function = (_: any) => {};
-  onModelTouched: Function = () => {};
+  onModelChange: Function = (_: any) => {
+  };
+  onModelTouched: Function = () => {
+  };
 
   writeValue(value: any): void {
     if (value !== undefined) {
@@ -260,7 +267,7 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
   }
 
   clearSearch(event?: Event) {
-    if(event) event.stopPropagation();
+    if (event) event.stopPropagation();
     this.searchFilterText = '';
   }
 
@@ -268,13 +275,13 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
     this.isVisible = !this.isVisible;
     if (this.isVisible) {
       this.focusToInput();
-    }else{
+    } else {
       this.dropdownClosed.emit();
       this.clearSearch();
     }
   }
 
-  focusToInput():void {
+  focusToInput(): void {
     setTimeout(() => {
       let el = this.element.nativeElement.querySelector('div.dropdown > input');
       if (el) {
@@ -287,7 +294,17 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
     return this.model && this.model.indexOf(option.id) > -1;
   }
 
+  isOriginalOption(option: IMultiSelectOption): boolean {
+    return this.originalOptions.indexOf(option.id) > -1
+  }
+
   setSelected(event: Event, option: IMultiSelectOption) {
+    if (this.settings.disableRemove && this.isOriginalOption(option)){
+      return;
+    }
+    if (this.settings.disableAdd && !this.isOriginalOption(option)){
+      return;
+    }
     if (!this.model) {
       this.model = [];
     }
@@ -316,7 +333,6 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
     }
     this.onModelChange(this.model);
     this.onModelTouched();
-
   }
 
   updateNumSelected() {
@@ -346,18 +362,32 @@ export class MultiselectDropdown implements OnInit, DoCheck, ControlValueAccesso
     this.model = this.model || [];
     this.model = this.options
       .map((option: IMultiSelectOption) => {
+        if (this.settings.disableAdd && !this.isOriginalOption(option)){
+          return;
+        }
         if (this.model.indexOf(option.id) === -1) {
           this.onAdded.emit(option.id);
         }
         return option.id;
       });
+    this.model = this.model.filter(function(n){ return n != undefined });
     this.onModelChange(this.model);
     this.onModelTouched();
+    console.log(this.model)
   }
 
   uncheckAll() {
-    this.model.forEach((id: number) => this.onRemoved.emit(id));
-    this.model = [];
+    if(this.settings.disableRemove){
+      for(let _i = this.model.length; _i >=0; _i--){
+        if(!(this.originalOptions.indexOf(this.model[_i]) > -1)){
+          this.onRemoved.emit(this.model[_i]);
+          this.model.splice(_i, 1);
+        }
+      }
+    }else{
+      this.model.forEach((id) => this.onRemoved.emit(id));
+      this.model = [];
+    }
     this.onModelChange(this.model);
     this.onModelTouched();
   }
