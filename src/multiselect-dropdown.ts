@@ -105,8 +105,7 @@ export class MultiSelectSearchFilter implements PipeTransform {
           <a *ngIf="settings.showUncheckAll" href="javascript:;" role="menuitem" tabindex="-1" (click)="uncheckAll()">
             <span style="width: 16px;"
                   [ngClass]="{'glyphicon glyphicon-remove': settings.checkedStyle !== 'fontawesome' && settings.checkedStyle !== 'custom',
-              'fa fa-times': settings.checkedStyle === 'fontawesome',
-              'fa fa-times': settings.checkedStyle === 'custom'}"></span>
+              'fa fa-times': settings.checkedStyle === 'fontawesome' || settings.checkedStyle === 'custom'}"></span>
             {{ texts.uncheckAll }}
           </a>
           <a *ngIf="settings.showCheckAll" href="javascript:;" role="menuitem" tabindex="-1" [ngStyle]="{'float': settings.showUncheckAll ? 'right' : 'none'}" (click)="checkAll()">
